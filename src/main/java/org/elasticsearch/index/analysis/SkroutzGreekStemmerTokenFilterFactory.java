@@ -13,7 +13,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.env.FailedToResolveConfigException;
 import org.elasticsearch.index.Index;
-import org.elasticsearch.index.settings.IndexSettings;
+import org.elasticsearch.index.settings.IndexSettingsService;
 
 public class SkroutzGreekStemmerTokenFilterFactory extends
 		AbstractTokenFilterFactory {
@@ -21,10 +21,10 @@ public class SkroutzGreekStemmerTokenFilterFactory extends
   private final CharArraySet stopwords;
 	@Inject
 	public SkroutzGreekStemmerTokenFilterFactory(Index index,
-			@IndexSettings Settings indexSettings,
+			IndexSettingsService indexSettings,
 			Environment env, @Assisted String name,
 			@Assisted Settings settings) throws IOException {
-		super(index, indexSettings, name, settings);
+		super(index, indexSettings.getSettings(), name, settings);
 	  this.stopwords = parseStopWords(env, settings, "stopwords_path");
 	}
 
