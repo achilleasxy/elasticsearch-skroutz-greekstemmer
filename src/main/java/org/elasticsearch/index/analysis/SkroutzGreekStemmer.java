@@ -1,10 +1,15 @@
 package org.elasticsearch.index.analysis;
 
+import com.esotericsoftware.yamlbeans.YamlException;
+import com.esotericsoftware.yamlbeans.YamlReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 
 import org.apache.lucene.analysis.el.GreekLowerCaseFilter;
 import org.apache.lucene.analysis.util.CharArraySet;
@@ -62,13 +67,20 @@ import org.elasticsearch.common.lucene.Lucene;
 public class SkroutzGreekStemmer {
   public final static String DEFAULT_STOPWORD_FILE = "stopwords.txt";
   private final CharArraySet stopwords;
+  private Map<String,String> step_0_exceptions ;
 
   public SkroutzGreekStemmer(final CharArraySet stopwords) {
     this.stopwords = stopwords;
+    this.step_0_exceptions = new java.util.TreeMap();
   }
 
   public SkroutzGreekStemmer() {
     this.stopwords = SkroutzGreekStemmer.getDefaultStopSet();
+    try {
+      this.step_0_exceptions = loadExceptions();
+    }catch(Exception ex){
+      this.step_0_exceptions =  new java.util.TreeMap();
+    }
   }
 
   public static final CharArraySet getDefaultStopSet(){
@@ -95,6 +107,12 @@ public class SkroutzGreekStemmer {
     // Too short or a stopword
     if (len < 3 || stopwords.contains(s, 0, len))
       return len;
+    
+    String exceptional;
+    if(( exceptional = step_0_exceptions.get(new String(s))) != null){
+      //TODO: replace form
+      return exceptional.length();
+    }
 
     final int origLen = len;
     // "short rules": if it hits one of these, it skips the "long list"
@@ -341,8 +359,7 @@ public class SkroutzGreekStemmer {
     if (len > 2 && (endsWith(s, len, "ιο") ||
                     endsWith(s, len, "ια"))) {
       len -= 2;
-      if(endsWith(s, len, "ρολογ") ||
-         endsWith(s, len, "κατωγ")) {
+      if(len == 5 && (endsWith(s, len, "ρολογ") || endsWith(s, len, "κατωγ"))) {
         s[len-1] = 'ι'; // ρολοι, κατωι
         return len;
       }
@@ -1071,5 +1088,18 @@ public class SkroutzGreekStemmer {
     } finally {
       IOUtils.close(reader);
     }
+  }
+  
+  private static Map<String, String> loadExceptions() throws FileNotFoundException, YamlException{
+    String fname = SkroutzGreekStemmer.class.getClassLoader()
+            .getResource("stemmer.yml").getFile();
+    YamlReader reader = new YamlReader(new FileReader(fname));
+    Map<String, String> exceptions =(Map) ((Map) reader.read()).get("step_1_exceptions");
+    Map<String, String> rv = new java.util.HashMap();
+    for (Map.Entry<String, String> entry : exceptions.entrySet()){
+      rv.put(entry.getKey().toLowerCase(), entry.getValue().toLowerCase());
+    }
+    
+    return rv;
   }
 }
